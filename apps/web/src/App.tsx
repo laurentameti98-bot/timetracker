@@ -6,17 +6,24 @@ import LogsPage from "./pages/LogsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProjectsPage from "./pages/ProjectsPage";
-import { syncToServer } from "./lib/sync";
+import { syncFromServer, syncToServer } from "./lib/sync";
+
+async function sync() {
+  await syncFromServer();
+  await syncToServer();
+}
 
 export default function App() {
   useEffect(() => {
+    if (navigator.onLine) sync().catch(() => {});
+
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && navigator.onLine) {
-        syncToServer().catch(() => {});
+        sync().catch(() => {});
       }
     };
     window.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("online", () => syncToServer().catch(() => {}));
+    window.addEventListener("online", () => sync().catch(() => {}));
     return () => {
       window.removeEventListener("visibilitychange", handleVisibility);
     };

@@ -1,6 +1,51 @@
 import { db } from "./db";
 import { api } from "./api";
 
+export async function syncFromServer() {
+  if (!navigator.onLine) return;
+
+  try {
+    const remoteProjects = await api.projects.list().catch(() => []);
+    for (const p of remoteProjects) {
+      await db.projects.put({
+        id: p.id,
+        name: p.name,
+        color: p.color,
+        createdAt: new Date(p.createdAt),
+      });
+    }
+
+    for (const p of remoteProjects) {
+      const remoteTasks = await api.projects.tasks(p.id).catch(() => []);
+      for (const t of remoteTasks) {
+        await db.tasks.put({
+          id: t.id,
+          projectId: t.projectId,
+          name: t.name,
+          createdAt: new Date(t.createdAt),
+        });
+      }
+    }
+
+    const remoteLogs = await api.timelogs.list().catch(() => []);
+    for (const l of remoteLogs) {
+      if (!l.endTime) continue;
+      await db.timelogs.put({
+        id: l.id,
+        projectId: l.projectId,
+        taskId: l.taskId,
+        startTime: new Date(l.startTime),
+        endTime: new Date(l.endTime),
+        notes: l.notes ?? "",
+        createdAt: new Date(l.createdAt),
+        updatedAt: new Date(l.updatedAt),
+      });
+    }
+  } catch (e) {
+    console.warn("Sync from server failed:", e);
+  }
+}
+
 export async function syncToServer() {
   if (!navigator.onLine) return;
 
