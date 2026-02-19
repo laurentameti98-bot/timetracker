@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { db, type Task } from "../lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { randomUUID } from "../lib/utils";
@@ -13,6 +13,13 @@ function formatDuration(ms: number): string {
   }
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
+
+const RING_RADIUS = 90;
+const RING_STROKE = 10;
+const SEGMENT_COUNT = 60;
+const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const SEGMENT_LENGTH = CIRCUMFERENCE / SEGMENT_COUNT - 2;
+const SEGMENT_GAP = 2;
 
 export default function TimerPage() {
   const [elapsed, setElapsed] = useState(0);
@@ -41,6 +48,29 @@ export default function TimerPage() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [tick]);
+
+  const isRunning = !!current;
+
+  const fillCount = useMemo(() => {
+    if (!isRunning) return 0;
+    const totalSeconds = Math.floor(elapsed / 1000);
+    const rem = totalSeconds % 120;
+    return rem <= 60 ? rem : 120 - rem;
+  }, [isRunning, elapsed]);
+
+  const trackDashArray = useMemo(
+    () => Array(SEGMENT_COUNT).fill(`${SEGMENT_LENGTH} ${SEGMENT_GAP}`).join(" "),
+    []
+  );
+
+  const progressDashArray = useMemo(() => {
+    if (fillCount === 0) return "0 9999";
+    return (
+      Array(fillCount)
+        .fill(`${SEGMENT_LENGTH} ${SEGMENT_GAP}`)
+        .join(" ") + " 0 9999"
+    );
+  }, [fillCount]);
 
   const handleStart = async () => {
     const proj = projects?.[0];
@@ -92,14 +122,48 @@ export default function TimerPage() {
     await db.activeTimer.update(current.id, { projectId: task.projectId, taskId });
   };
 
-  const isRunning = !!current;
-
   return (
     <div className="page-container">
       <h1 className="page-title">Timer</h1>
 
       <div className="timer-card">
         <div className="timer-display">{formatDuration(elapsed)}</div>
+
+        <div className="timer-circle-wrapper">
+          <svg
+            className="timer-ring"
+            viewBox={`0 0 ${(RING_RADIUS + RING_STROKE) * 2} ${(RING_RADIUS + RING_STROKE) * 2}`}
+            aria-hidden
+          >
+            <circle
+              className="timer-ring-track"
+              cx={RING_RADIUS + RING_STROKE}
+              cy={RING_RADIUS + RING_STROKE}
+              r={RING_RADIUS}
+              fill="none"
+              strokeWidth={RING_STROKE}
+              strokeDasharray={trackDashArray}
+              transform={`rotate(-90 ${RING_RADIUS + RING_STROKE} ${RING_RADIUS + RING_STROKE})`}
+            />
+            <circle
+              className="timer-ring-progress"
+              cx={RING_RADIUS + RING_STROKE}
+              cy={RING_RADIUS + RING_STROKE}
+              r={RING_RADIUS}
+              fill="none"
+              strokeWidth={RING_STROKE}
+              strokeDasharray={progressDashArray}
+              transform={`rotate(-90 ${RING_RADIUS + RING_STROKE} ${RING_RADIUS + RING_STROKE})`}
+            />
+          </svg>
+          <button
+            onClick={isRunning ? handleStop : handleStart}
+            className={`btn-timer-round ${isRunning ? "btn-timer-stop" : "btn-timer-start"}`}
+            aria-label={isRunning ? "Stop timer" : "Start timer"}
+          >
+            {isRunning ? "Stop" : "Start"}
+          </button>
+        </div>
 
         {isRunning && (
           <div className="timer-selects">
@@ -127,13 +191,6 @@ export default function TimerPage() {
             </select>
           </div>
         )}
-
-        <button
-          onClick={isRunning ? handleStop : handleStart}
-          className={`btn-timer ${isRunning ? "btn-timer-stop" : "btn-timer-start"}`}
-        >
-          {isRunning ? "Stop" : "Start"}
-        </button>
       </div>
     </div>
   );

@@ -330,35 +330,73 @@ input, textarea, select {
   box-shadow: var(--shadow-sm);
 }
 
-.btn-timer {
+.timer-circle-wrapper {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin: 0 auto var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer-ring {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  padding: var(--space-5) var(--space-7);
+  height: 100%;
+}
+
+.timer-ring-track {
+  stroke: var(--bg-card);
+}
+
+.timer-ring-progress {
+  stroke: var(--accent);
+  transition: stroke-dasharray 1s step-end;
+}
+
+.btn-timer-round {
+  position: relative;
+  z-index: 1;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: none;
   font-size: 1.25rem;
   font-weight: 600;
-  border-radius: var(--radius-xl);
-  border: none;
   color: white;
+  cursor: pointer;
   transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
-.btn-timer:hover:not(:disabled) {
+.btn-timer-round:hover:not(:disabled) {
   opacity: 0.95;
 }
 
-.btn-timer:active:not(:disabled) {
+.btn-timer-round:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-.btn-timer-start {
+.btn-timer-round:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.btn-timer-round.btn-timer-start {
   background: var(--accent);
 }
 
-.btn-timer-stop {
+.btn-timer-round.btn-timer-stop {
   background: var(--danger);
 }
 
+.timer-circle-wrapper:has(.btn-timer-stop) .timer-ring-progress {
+  stroke: var(--danger);
+}
+
 .timer-selects {
-  margin-bottom: var(--space-6);
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
