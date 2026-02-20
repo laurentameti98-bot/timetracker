@@ -125,7 +125,8 @@ export async function syncToServer() {
     }
   }
 
-  for (const p of remoteProjects) {
+  // Only fetch tasks for projects we kept (didn't delete) - deleted projects return 404
+  for (const p of remoteProjects.filter((p) => localProjectIds.has(p.id))) {
     const remoteTasks = await api.projects.tasks(p.id).catch(() => []);
     for (const t of remoteTasks) {
       if (!localTaskIds.has(t.id)) {

@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
-import { tasks } from "../db/schema.js";
+import { tasks, timelogs } from "../db/schema.js";
 import { taskUpdateSchema } from "@time-tracker/shared";
 import { eq } from "drizzle-orm";
 
@@ -36,10 +36,14 @@ export async function taskRoutes(app: FastifyInstance) {
   });
 
   app.delete<{ Params: { id: string } }>("/:id", async (req, reply) => {
-    const result = await db.delete(tasks).where(eq(tasks.id, req.params.id));
-    if (result.changes === 0) {
-      return reply.status(404).send({ error: "Task not found" });
-    }
+    const [existing] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, req.params.id));
+    if (!existing) return reply.status(404).send({ error: "Task not found" });
+    // Cascade: delete timelogs before task
+    await db.delete(timelogs).where(eq(timelogs.taskId, req.params.id));
+    await db.delete(tasks).where(eq(tasks.id, req.params.id));
     return reply.status(204).send();
   });
 }

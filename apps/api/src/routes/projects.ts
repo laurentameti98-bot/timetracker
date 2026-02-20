@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
-import { projects, tasks } from "../db/schema.js";
+import { projects, tasks, timelogs } from "../db/schema.js";
 import {
   projectCreateSchema,
   projectUpdateSchema,
@@ -64,12 +64,15 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.delete<{ Params: { id: string } }>("/:id", async (req, reply) => {
-    const result = await db
-      .delete(projects)
+    const [existing] = await db
+      .select()
+      .from(projects)
       .where(eq(projects.id, req.params.id));
-    if (result.changes === 0) {
-      return reply.status(404).send({ error: "Project not found" });
-    }
+    if (!existing) return reply.status(404).send({ error: "Project not found" });
+    // Cascade: delete tasks and timelogs before project
+    await db.delete(timelogs).where(eq(timelogs.projectId, req.params.id));
+    await db.delete(tasks).where(eq(tasks.projectId, req.params.id));
+    await db.delete(projects).where(eq(projects.id, req.params.id));
     return reply.status(204).send();
   });
 
