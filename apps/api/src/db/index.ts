@@ -11,6 +11,10 @@ if (!fs.existsSync(dir)) {
 }
 
 const sqlite = new Database(dbPath);
-sqlite.pragma("foreign_keys = ON");
+try {
+  sqlite.pragma("foreign_keys = ON");
+} catch {
+  // Some environments may not support it; cascade deletes are done explicitly in routes
+}
 export const sqliteDb = sqlite;
 export const db = drizzle(sqlite, { schema });

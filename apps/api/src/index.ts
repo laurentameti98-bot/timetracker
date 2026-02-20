@@ -8,7 +8,15 @@ import { initDb } from "./db/init.js";
 
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: true });
+await app.register(cors, {
+  origin: [
+    "https://timetrackerapp-mu.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    /\.vercel\.app$/,
+  ],
+  credentials: false,
+});
 
 app.register(async (api) => {
   api.register(projectRoutes, { prefix: "/projects" });
@@ -19,7 +27,12 @@ app.register(async (api) => {
 
 app.get("/health", async () => ({ status: "ok" }));
 
-await initDb();
+try {
+  await initDb();
+} catch (err) {
+  console.error("Database init failed:", err);
+  throw err;
+}
 
 const port = Number(process.env.PORT) || 3001;
 await app.listen({ port, host: "0.0.0.0" });
