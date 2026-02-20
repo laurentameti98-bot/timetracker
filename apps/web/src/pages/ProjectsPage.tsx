@@ -57,12 +57,15 @@ export default function ProjectsPage() {
 
   const handleDeleteProject = async (id: string) => {
     if (confirm("Delete this project and all its tasks?")) {
+      await db.tasks.where("projectId").equals(id).delete();
+      await db.timelogs.where("projectId").equals(id).delete();
       await db.projects.delete(id);
     }
   };
 
   const handleDeleteTask = async (id: string) => {
     if (confirm("Delete this task?")) {
+      await db.timelogs.where("taskId").equals(id).delete();
       await db.tasks.delete(id);
     }
   };

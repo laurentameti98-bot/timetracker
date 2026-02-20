@@ -15,15 +15,32 @@ export async function syncFromServer() {
       });
     }
 
+    const remoteProjectIds = new Set(remoteProjects.map((p) => p.id));
+    const localProjects = await db.projects.toArray();
+    for (const p of localProjects) {
+      if (!remoteProjectIds.has(p.id)) {
+        await db.projects.delete(p.id);
+      }
+    }
+
+    const remoteTaskIds: string[] = [];
     for (const p of remoteProjects) {
       const remoteTasks = await api.projects.tasks(p.id).catch(() => []);
       for (const t of remoteTasks) {
+        remoteTaskIds.push(t.id);
         await db.tasks.put({
           id: t.id,
           projectId: t.projectId,
           name: t.name,
           createdAt: new Date(t.createdAt),
         });
+      }
+    }
+    const remoteTaskIdSet = new Set(remoteTaskIds);
+    const localTasks = await db.tasks.toArray();
+    for (const t of localTasks) {
+      if (!remoteTaskIdSet.has(t.id)) {
+        await db.tasks.delete(t.id);
       }
     }
 
@@ -40,6 +57,13 @@ export async function syncFromServer() {
         createdAt: new Date(l.createdAt),
         updatedAt: new Date(l.updatedAt),
       });
+    }
+    const remoteLogIds = new Set(remoteLogs.map((l) => l.id));
+    const localLogs = await db.timelogs.toArray();
+    for (const l of localLogs) {
+      if (l.endTime && !remoteLogIds.has(l.id)) {
+        await db.timelogs.delete(l.id);
+      }
     }
   } catch (e) {
     console.warn("Sync from server failed:", e);
@@ -68,7 +92,19 @@ export async function syncToServer() {
     }
   }
 
+  const localProjectIds = new Set(projects.map((p) => p.id));
+  for (const p of remoteProjects) {
+    if (!localProjectIds.has(p.id)) {
+      try {
+        await api.projects.delete(p.id);
+      } catch (e) {
+        console.warn("Sync project delete failed:", e);
+      }
+    }
+  }
+
   const tasks = await db.tasks.toArray();
+  const localTaskIds = new Set(tasks.map((t) => t.id));
   const remoteTasksByProject = new Map<string, Set<string>>();
   for (const t of tasks) {
     try {
@@ -84,6 +120,19 @@ export async function syncToServer() {
       }
     } catch (e) {
       console.warn("Sync task failed:", e);
+    }
+  }
+
+  for (const p of remoteProjects) {
+    const remoteTasks = await api.projects.tasks(p.id).catch(() => []);
+    for (const t of remoteTasks) {
+      if (!localTaskIds.has(t.id)) {
+        try {
+          await api.tasks.delete(t.id);
+        } catch (e) {
+          console.warn("Sync task delete failed:", e);
+        }
+      }
     }
   }
 
@@ -104,6 +153,17 @@ export async function syncToServer() {
         });
       } catch (e) {
         console.warn("Sync timelog failed:", e);
+      }
+    }
+  }
+
+  const localLogIds = new Set(timelogs.map((l) => l.id));
+  for (const l of remoteLogs) {
+    if (!localLogIds.has(l.id)) {
+      try {
+        await api.timelogs.delete(l.id);
+      } catch (e) {
+        console.warn("Sync timelog delete failed:", e);
       }
     }
   }

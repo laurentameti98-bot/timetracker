@@ -30,7 +30,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       )}
       <main className="layout-content">{children}</main>
-      <nav className="nav">
+      <nav className="nav bottomNav" aria-label="Main navigation">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}

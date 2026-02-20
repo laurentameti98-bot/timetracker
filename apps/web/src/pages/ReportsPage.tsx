@@ -64,16 +64,16 @@ export default function ReportsPage() {
 
   const totalMinutes = Object.values(aggregated).reduce((a, b) => a + b, 0);
   const colors = [
-    "#0d9488",
-    "#14b8a6",
-    "#0891b2",
-    "#0284c7",
-    "#2563eb",
-    "#7c3aed",
     "#a855f7",
-    "#db2777",
-    "#e11d48",
-    "#ea580c",
+    "#e100ff",
+    "#7f00ff",
+    "#ff416c",
+    "#ff4b2b",
+    "#22c55e",
+    "#3b82f6",
+    "#f59e0b",
+    "#ec4899",
+    "#06b6d4",
   ];
 
   const handleExportCsv = () => {
@@ -121,22 +121,31 @@ export default function ReportsPage() {
             style={{ width: "auto", minWidth: 140 }}
           />
         </div>
-        <select
-          value={groupBy}
-          onChange={(e) => setGroupBy(e.target.value as "project" | "task")}
-          className="select"
-          style={{ width: "auto", minWidth: 140 }}
-        >
-          <option value="project">By project</option>
-          <option value="task">By task</option>
-        </select>
+        <div className="segmented" role="tablist" aria-label="Group by">
+          <button
+            type="button"
+            role="tab"
+            className={`segmented__item ${groupBy === "project" ? "is-active" : ""}`}
+            onClick={() => setGroupBy("project")}
+          >
+            By project
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className={`segmented__item ${groupBy === "task" ? "is-active" : ""}`}
+            onClick={() => setGroupBy("task")}
+          >
+            By task
+          </button>
+        </div>
         <button onClick={handleExportCsv} className="btn btn-primary">
           <Download size={16} />
           Export CSV
         </button>
       </div>
 
-      <div className="reports-total">
+      <div className="reports-total hero-card">
         <div className="reports-total-label">Total time</div>
         <div className="reports-total-value">
           {formatDuration(Math.round(totalMinutes))}
@@ -145,29 +154,36 @@ export default function ReportsPage() {
 
       {chartData.length > 0 ? (
         <>
-          <div className="reports-chart-bar">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="reports-chart-card card">
+            <div className="reports-chart-bar">
+              <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                <XAxis type="number" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
+                <XAxis type="number" tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 12 }} axisLine={{ stroke: "transparent" }} />
                 <YAxis
                   type="category"
                   dataKey="name"
                   width={100}
-                  tick={{ fill: "var(--text)", fontSize: 12 }}
+                  tick={{ fill: "#fff", fontSize: 12 }}
+                  axisLine={{ stroke: "transparent" }}
                 />
                 <Tooltip
                   contentStyle={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--bg-card)",
-                    borderRadius: "var(--radius-md)",
+                    background: "rgba(18,21,34,0.95)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "12px",
+                    boxShadow: "0 16px 50px rgba(0,0,0,0.4)",
+                    padding: "12px 16px",
                   }}
                   formatter={(value: number) => [formatDuration(value), "Minutes"]}
                 />
-                <Bar dataKey="minutes" fill="var(--accent)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="minutes" fill="rgba(255,255,255,0.9)" radius={[0, 8, 8, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="reports-chart-pie">
+          <div className="reports-chart-card card">
+            <div className="reports-chart-pie">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -180,6 +196,7 @@ export default function ReportsPage() {
                   label={({ name, percent }) =>
                     `${name} ${(percent * 100).toFixed(0)}%`
                   }
+                  labelLine={{ stroke: "rgba(255,255,255,0.6)" }}
                 >
                   {chartData.map((_, i) => (
                     <Cell key={i} fill={colors[i % colors.length]} />
@@ -188,13 +205,17 @@ export default function ReportsPage() {
                 <Tooltip
                   formatter={(value: number) => formatDuration(value)}
                   contentStyle={{
-                    background: "var(--bg-elevated)",
-                    border: "1px solid var(--bg-card)",
-                    borderRadius: "var(--radius-md)",
+                    background: "rgba(18,21,34,0.95)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "12px",
+                    boxShadow: "0 16px 50px rgba(0,0,0,0.4)",
+                    padding: "12px 16px",
                   }}
                 />
               </PieChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
           </div>
         </>
       ) : (
