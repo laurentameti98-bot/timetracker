@@ -580,8 +580,12 @@ button:disabled {
 .btn-timer-main {
   width: 100%;
   max-width: 100%;
-  padding: 1.25rem 2.5rem;
-  font-size: 1.25rem;
+  min-height: 120px;
+  padding: 1.5rem 2.5rem;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
   color: #fff;
   border: none;
@@ -1041,5 +1045,11 @@ button:disabled {
   .btn {
     font-size: 0.8125rem;
     padding: 0.65rem 1rem;
+  }
+
+  .btn-timer-main {
+    min-height: 120px;
+    padding: 1.5rem 2.5rem;
+    font-size: 1rem;
   }
 }
