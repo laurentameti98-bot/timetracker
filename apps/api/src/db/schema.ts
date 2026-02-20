@@ -3,6 +3,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  subtitle: text("subtitle").default(""),
   color: text("color").notNull().default("#0d9488"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const projectSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(200),
+  subtitle: z.string().max(500).optional().default(""),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#0d9488"),
   createdAt: z.coerce.date(),
 });

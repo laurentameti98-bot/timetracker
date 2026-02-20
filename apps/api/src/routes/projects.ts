@@ -24,7 +24,7 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.post("/", async (req, reply) => {
-    const body = req.body as { name: string; color?: string; id?: string };
+    const body = req.body as { name: string; subtitle?: string; color?: string; id?: string };
     const parsed = projectCreateSchema.safeParse(body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
@@ -34,6 +34,7 @@ export async function projectRoutes(app: FastifyInstance) {
     await db.insert(projects).values({
       id,
       name: parsed.data.name,
+      subtitle: parsed.data.subtitle ?? "",
       color: parsed.data.color ?? "#0d9488",
       createdAt: now,
     });

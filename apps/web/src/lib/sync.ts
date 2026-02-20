@@ -10,6 +10,7 @@ export async function syncFromServer() {
       await db.projects.put({
         id: p.id,
         name: p.name,
+        subtitle: (p as { subtitle?: string }).subtitle ?? "",
         color: p.color,
         createdAt: new Date(p.createdAt),
       });
@@ -82,6 +83,7 @@ export async function syncToServer() {
       try {
         await api.projects.create({
           name: p.name,
+          subtitle: p.subtitle ?? "",
           color: p.color,
           id: p.id,
         });

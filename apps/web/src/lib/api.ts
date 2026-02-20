@@ -27,15 +27,15 @@ async function fetchApi<T>(
 
 export const api = {
   projects: {
-    list: () => fetchApi<{ id: string; name: string; color: string; createdAt: string }[]>(`/projects`),
-    get: (id: string) => fetchApi<{ id: string; name: string; color: string; createdAt: string }>(`/projects/${id}`),
-    create: (data: { name: string; color?: string; id?: string }) =>
-      fetchApi<{ id: string; name: string; color: string; createdAt: string }>(`/projects`, {
+    list: () => fetchApi<{ id: string; name: string; subtitle?: string; color: string; createdAt: string }[]>(`/projects`),
+    get: (id: string) => fetchApi<{ id: string; name: string; subtitle?: string; color: string; createdAt: string }>(`/projects/${id}`),
+    create: (data: { name: string; subtitle?: string; color?: string; id?: string }) =>
+      fetchApi<{ id: string; name: string; subtitle?: string; color: string; createdAt: string }>(`/projects`, {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: { name?: string; color?: string }) =>
-      fetchApi<{ id: string; name: string; color: string; createdAt: string }>(`/projects/${id}`, {
+    update: (id: string, data: { name?: string; subtitle?: string; color?: string }) =>
+      fetchApi<{ id: string; name: string; subtitle?: string; color: string; createdAt: string }>(`/projects/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
       }),

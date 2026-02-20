@@ -3,6 +3,7 @@ import Dexie, { type EntityTable } from "dexie";
 export interface Project {
   id: string;
   name: string;
+  subtitle?: string;
   color: string;
   createdAt: Date;
 }

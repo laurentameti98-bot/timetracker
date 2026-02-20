@@ -20,6 +20,7 @@ const COLORS = [
 export default function ProjectsPage() {
   const [showAddProject, setShowAddProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectSubtitle, setNewProjectSubtitle] = useState("");
   const [newProjectColor, setNewProjectColor] = useState(COLORS[0]);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [newTaskName, setNewTaskName] = useState("");
@@ -33,10 +34,12 @@ export default function ProjectsPage() {
     await db.projects.add({
       id,
       name: newProjectName.trim(),
+      subtitle: newProjectSubtitle.trim() || undefined,
       color: newProjectColor,
       createdAt: now,
     });
     setNewProjectName("");
+    setNewProjectSubtitle("");
     setNewProjectColor(COLORS[0]);
     setShowAddProject(false);
   };
@@ -82,7 +85,12 @@ export default function ProjectsPage() {
                 className="project-color-dot"
                 style={{ background: project.color }}
               />
-              <span style={{ fontWeight: 500 }}>{project.name}</span>
+              <div>
+                <span style={{ fontWeight: 500 }}>{project.name}</span>
+                {project.subtitle && (
+                  <div className="project-subtitle">{project.subtitle}</div>
+                )}
+              </div>
             </div>
             <div className="project-card-actions">
               <button
@@ -122,6 +130,13 @@ export default function ProjectsPage() {
             onChange={(e) => setNewProjectName(e.target.value)}
             className="input"
             autoFocus
+            style={{ marginBottom: "var(--space-2)" }}
+          />
+          <input
+            placeholder="Subtitle (optional)"
+            value={newProjectSubtitle}
+            onChange={(e) => setNewProjectSubtitle(e.target.value)}
+            className="input"
             style={{ marginBottom: "var(--space-3)" }}
           />
           <div className="color-picker" style={{ marginBottom: "var(--space-4)" }}>
