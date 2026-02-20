@@ -1,3 +1,5 @@
+import { getAuthToken, clearAuth } from "./authStorage";
+
 function getApiBase(): string {
   const custom = localStorage.getItem("apiUrl");
   if (custom) return custom.replace(/\/$/, "") + "/api/v1";
@@ -6,19 +8,32 @@ function getApiBase(): string {
   return "/api/v1";
 }
 
+let onUnauthorized: (() => void) | null = null;
+export function setOnUnauthorized(fn: () => void) {
+  onUnauthorized = fn;
+}
+
 async function fetchApi<T>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
   const hasBody = options?.body != null && options.body !== "";
+  const token = getAuthToken();
   const headers: Record<string, string> = {
     ...(hasBody ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options?.headers as Record<string, string>),
   };
   const res = await fetch(`${getApiBase()}${path}`, {
     ...options,
     headers,
   });
+  if (res.status === 401) {
+    clearAuth();
+    onUnauthorized?.();
+    const err = await res.json().catch(() => ({ error: "Unauthorized" }));
+    throw new Error(err.error?.message ?? err.error ?? "Unauthorized");
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error?.message ?? err.error ?? "Request failed");
@@ -63,6 +78,17 @@ export const api = {
     delete: (id: string) => fetchApi<void>(`/tasks/${id}`, { method: "DELETE" }),
   },
   timelogs: {
+    get: (id: string) =>
+      fetchApi<{
+        id: string;
+        projectId: string;
+        taskId: string;
+        startTime: string;
+        endTime: string | null;
+        notes: string;
+        createdAt: string;
+        updatedAt: string;
+      }>(`/timelogs/${id}`),
     list: (from?: string, to?: string) => {
       const params = new URLSearchParams();
       if (from) params.set("from", from);
@@ -125,6 +151,13 @@ export const api = {
         body: JSON.stringify(data),
       }),
     delete: (id: string) => fetchApi<void>(`/timelogs/${id}`, { method: "DELETE" }),
+  },
+  auth: {
+    google: (idToken: string) =>
+      fetchApi<{ token: string; user: { id: string; email: string; name: string | null } }>(
+        `/auth/google`,
+        { method: "POST", body: JSON.stringify({ idToken }) }
+      ),
   },
   reports: {
     summary: (from?: string, to?: string, groupBy?: "project" | "task" | "day") => {

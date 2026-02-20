@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { db } from "../lib/db";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useTimelog, useProjects, useTasks } from "../hooks/useApiData";
+import { api } from "../lib/api";
 
 interface Props {
   id: string;
@@ -15,12 +15,9 @@ export default function EditTimelogModal({ id, onClose, onSaved }: Props) {
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
 
-  const timelog = useLiveQuery(() => db.timelogs.get(id), [id]);
-  const projects = useLiveQuery(() => db.projects.toArray(), []);
-  const tasks = useLiveQuery(
-    () => (projectId ? db.tasks.where("projectId").equals(projectId).toArray() : []),
-    [projectId]
-  );
+  const { data: timelog } = useTimelog(id);
+  const { data: projects } = useProjects();
+  const { data: tasks } = useTasks(projectId || null);
 
   useEffect(() => {
     if (timelog) {
@@ -42,16 +39,19 @@ export default function EditTimelogModal({ id, onClose, onSaved }: Props) {
 
   const handleSave = async () => {
     if (!timelog) return;
-    const now = new Date();
-    await db.timelogs.update(id, {
-      projectId,
-      taskId,
-      startTime: new Date(startTime),
-      endTime: endTime ? new Date(endTime) : undefined,
-      notes: notes || undefined,
-      updatedAt: now,
-    });
-    onSaved();
+    try {
+      await api.timelogs.update(id, {
+        projectId,
+        taskId,
+        startTime: new Date(startTime).toISOString(),
+        endTime: endTime ? new Date(endTime).toISOString() : undefined,
+        notes: notes || undefined,
+      });
+      onSaved();
+    } catch (e) {
+      console.warn("Failed to update timelog:", e);
+      alert("Failed to update timelog. Please try again.");
+    }
   };
 
   if (!timelog) return null;

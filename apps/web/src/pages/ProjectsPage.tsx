@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
-import { db } from "../lib/db";
 import { randomUUID } from "../lib/utils";
-import { sync } from "../lib/sync";
+import { useProjects, useTasks, queryKeys } from "../hooks/useApiData";
+import { api } from "../lib/api";
 
 const COLORS = [
   "#0d9488",
@@ -19,6 +19,7 @@ const COLORS = [
 ];
 
 export default function ProjectsPage() {
+  const queryClient = useQueryClient();
   const [showAddProject, setShowAddProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectSubtitle, setNewProjectSubtitle] = useState("");
@@ -26,61 +27,78 @@ export default function ProjectsPage() {
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [newTaskName, setNewTaskName] = useState("");
 
-  const projects = useLiveQuery(() => db.projects.toArray(), []);
+  const { data: projects } = useProjects();
 
   const handleAddProject = async () => {
     if (!newProjectName.trim()) return;
     const id = randomUUID();
-    const now = new Date();
-    await db.projects.add({
-      id,
-      name: newProjectName.trim(),
-      subtitle: newProjectSubtitle.trim() || undefined,
-      color: newProjectColor,
-      createdAt: now,
-    });
-    setNewProjectName("");
-    setNewProjectSubtitle("");
-    setNewProjectColor(COLORS[0]);
-    setShowAddProject(false);
+    try {
+      await api.projects.create({
+        id,
+        name: newProjectName.trim(),
+        subtitle: newProjectSubtitle.trim() || undefined,
+        color: newProjectColor,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+      setNewProjectName("");
+      setNewProjectSubtitle("");
+      setNewProjectColor(COLORS[0]);
+      setShowAddProject(false);
+    } catch (e) {
+      console.warn("Failed to create project:", e);
+      alert("Failed to create project. Please try again.");
+    }
   };
 
   const handleAddTask = async (projectId: string) => {
     if (!newTaskName.trim()) return;
     const id = randomUUID();
-    const now = new Date();
-    await db.tasks.add({
-      id,
-      projectId,
-      name: newTaskName.trim(),
-      createdAt: now,
-    });
-    setNewTaskName("");
-    setExpandedProject(null);
+    try {
+      await api.projects.createTask(projectId, { id, name: newTaskName.trim() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(projectId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTasks });
+      setNewTaskName("");
+      setExpandedProject(null);
+    } catch (e) {
+      console.warn("Failed to create task:", e);
+      alert("Failed to create task. Please try again.");
+    }
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (confirm("Delete this project and all its tasks?")) {
-      await db.tasks.where("projectId").equals(id).delete();
-      await db.timelogs.where("projectId").equals(id).delete();
-      await db.projects.delete(id);
-      if (navigator.onLine) sync().catch(() => {});
+    if (!confirm("Delete this project and all its tasks?")) return;
+    try {
+      await api.projects.delete(id);
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTasks });
+      queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "tasks" });
+      queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "timelogs" });
+    } catch (e) {
+      console.warn("Failed to delete project:", e);
+      alert("Failed to delete project. Please try again.");
     }
   };
 
-  const handleDeleteTask = async (id: string) => {
-    if (confirm("Delete this task?")) {
-      await db.timelogs.where("taskId").equals(id).delete();
-      await db.tasks.delete(id);
-      if (navigator.onLine) sync().catch(() => {});
+  const handleDeleteTask = async (projectId: string, taskId: string) => {
+    if (!confirm("Delete this task?")) return;
+    try {
+      await api.tasks.delete(taskId);
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks(projectId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTasks });
+      queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "timelogs" });
+    } catch (e) {
+      console.warn("Failed to delete task:", e);
+      alert("Failed to delete task. Please try again.");
     }
   };
+
+  const projectList = projects ?? [];
 
   return (
     <div className="page-container">
       <h1 className="page-title">Projects & Tasks</h1>
 
-      {(projects ?? []).map((project) => (
+      {projectList.map((project) => (
         <div key={project.id} className="project-card">
           <div className="project-card-header">
             <div className="project-card-title">
@@ -119,7 +137,7 @@ export default function ProjectsPage() {
               newTaskName={newTaskName}
               setNewTaskName={setNewTaskName}
               onAddTask={() => handleAddTask(project.id)}
-              onDeleteTask={handleDeleteTask}
+              onDeleteTask={(taskId) => handleDeleteTask(project.id, taskId)}
             />
           )}
         </div>
@@ -191,12 +209,9 @@ function ProjectTasks({
   newTaskName: string;
   setNewTaskName: (v: string) => void;
   onAddTask: () => void;
-  onDeleteTask: (id: string) => void;
+  onDeleteTask: (taskId: string) => void;
 }) {
-  const tasks = useLiveQuery(
-    () => db.tasks.where("projectId").equals(projectId).toArray(),
-    [projectId]
-  );
+  const { data: tasks } = useTasks(projectId);
 
   return (
     <div className="project-tasks-panel">

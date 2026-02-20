@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { db, type Task } from "../lib/db";
+import { db } from "../lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { randomUUID } from "../lib/utils";
+import { useProjects, useTasks } from "../hooks/useApiData";
+import { api } from "../lib/api";
 
 function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -18,15 +20,9 @@ export default function TimerPage() {
   const [elapsed, setElapsed] = useState(0);
 
   const activeTimer = useLiveQuery(() => db.activeTimer.toArray(), []);
-  const projects = useLiveQuery(() => db.projects.toArray(), []);
+  const { data: projects } = useProjects();
   const currentProjectId = activeTimer?.[0]?.projectId;
-  const tasks = useLiveQuery(
-    async (): Promise<Task[]> => {
-      if (!currentProjectId) return [];
-      return db.tasks.where("projectId").equals(currentProjectId).toArray();
-    },
-    [currentProjectId]
-  );
+  const { data: tasks } = useTasks(currentProjectId ?? null);
 
   const current = activeTimer?.[0] ?? null;
 
@@ -46,9 +42,14 @@ export default function TimerPage() {
 
   const handleStart = async () => {
     const proj = projects?.[0];
-    const task = proj ? (await db.tasks.where("projectId").equals(proj.id).first()) : null;
-    if (!proj || !task) {
+    if (!proj) {
       alert("Create a project and task first in the Projects tab.");
+      return;
+    }
+    const projectTasks = await api.projects.tasks(proj.id);
+    const task = projectTasks[0];
+    if (!task) {
+      alert("Create a task first in the Projects tab.");
       return;
     }
     const id = randomUUID();
@@ -65,34 +66,46 @@ export default function TimerPage() {
   const handleStop = async () => {
     const t = current;
     if (!t) return;
+    if (!navigator.onLine) {
+      alert("Connect to the internet to save this timelog.");
+      return;
+    }
     const now = new Date();
     const id = randomUUID();
-    await db.timelogs.add({
-      id,
-      projectId: t.projectId,
-      taskId: t.taskId,
-      startTime: new Date(t.startTime),
-      endTime: now,
-      notes: "",
-      createdAt: now,
-      updatedAt: now,
-    });
+    try {
+      await api.timelogs.create({
+        id,
+        projectId: t.projectId,
+        taskId: t.taskId,
+        startTime: new Date(t.startTime).toISOString(),
+        endTime: now.toISOString(),
+        notes: "",
+      });
+    } catch (e) {
+      console.warn("Failed to save timelog:", e);
+      alert("Failed to save timelog. Please try again.");
+      return;
+    }
     await db.activeTimer.clear();
   };
 
   const handleChangeProject = async (projectId: string) => {
     if (!current) return;
-    const task = await db.tasks.where("projectId").equals(projectId).first();
+    const projectTasks = await api.projects.tasks(projectId);
+    const task = projectTasks[0];
     if (!task) return;
     await db.activeTimer.update(current.id, { projectId, taskId: task.id });
   };
 
   const handleChangeTask = async (taskId: string) => {
     if (!current) return;
-    const task = await db.tasks.get(taskId);
+    const task = tasks?.find((t) => t.id === taskId);
     if (!task) return;
     await db.activeTimer.update(current.id, { projectId: task.projectId, taskId });
   };
+
+  const projectList = projects ?? [];
+  const taskList = tasks ?? [];
 
   return (
     <div className="page-container timer-page">
@@ -118,7 +131,7 @@ export default function TimerPage() {
               onChange={(e) => handleChangeProject(e.target.value)}
               className="select"
             >
-              {projects?.map((p) => (
+              {projectList.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -129,7 +142,7 @@ export default function TimerPage() {
               onChange={(e) => handleChangeTask(e.target.value)}
               className="select"
             >
-              {tasks?.map((t) => (
+              {taskList.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
                 </option>

@@ -1,28 +1,27 @@
-import { useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import TimerPage from "./pages/TimerPage";
 import LogsPage from "./pages/LogsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProjectsPage from "./pages/ProjectsPage";
-import { sync } from "./lib/sync";
+import LoginPage from "./pages/LoginPage";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
-export default function App() {
-  useEffect(() => {
-    if (navigator.onLine) sync().catch(() => {});
+function ProtectedRoutes() {
+  const { user, isLoading } = useAuth();
 
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible" && navigator.onLine) {
-        sync().catch(() => {});
-      }
-    };
-    window.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("online", () => sync().catch(() => {}));
-    return () => {
-      window.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, []);
+  if (isLoading) {
+    return (
+      <div className="page-container" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+        <p className="text-muted">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <Layout>
@@ -34,5 +33,16 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/*" element={<ProtectedRoutes />} />
+      </Routes>
+    </AuthProvider>
   );
 }

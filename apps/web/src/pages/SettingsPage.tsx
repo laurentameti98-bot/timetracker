@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { useSync } from "../hooks/useSync";
+import { useNavigate } from "react-router-dom";
+import { useInvalidateAll } from "../hooks/useApiData";
 import { useTheme } from "../hooks/useTheme";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function SettingsPage() {
-  const { sync, isSyncing, lastSync } = useSync();
+  const navigate = useNavigate();
+  const invalidateAll = useInvalidateAll();
   const { theme, setTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [apiUrl, setApiUrl] = useState(() => {
     return localStorage.getItem("apiUrl") ?? "";
   });
@@ -14,9 +18,28 @@ export default function SettingsPage() {
     alert("API URL saved.");
   };
 
+  const handleRefresh = () => {
+    invalidateAll();
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="page-container">
       <h1 className="page-title">Settings</h1>
+
+      <div className="settings-section">
+        <h2 className="settings-section-title">Account</h2>
+        <p className="text-muted" style={{ marginBottom: "var(--space-3)" }}>
+          {user?.email}
+        </p>
+        <button onClick={handleLogout} className="btn btn-secondary">
+          Log out
+        </button>
+      </div>
 
       <div className="settings-section">
         <h2 className="settings-section-title">Theme</h2>
@@ -40,7 +63,7 @@ export default function SettingsPage() {
       <div className="settings-section">
         <h2 className="settings-section-title">API URL</h2>
         <p className="text-muted" style={{ marginBottom: "var(--space-3)" }}>
-          Backend URL for sync (leave empty to use same origin)
+          Backend URL (leave empty to use same origin)
         </p>
         <input
           type="url"
@@ -56,18 +79,12 @@ export default function SettingsPage() {
       </div>
 
       <div className="settings-section">
-        <h2 className="settings-section-title">Sync</h2>
+        <h2 className="settings-section-title">Data</h2>
         <p className="text-muted" style={{ marginBottom: "var(--space-3)" }}>
-          {lastSync
-            ? `Last sync: ${new Date(lastSync).toLocaleString()}`
-            : "Not synced yet"}
+          Refresh data from the server
         </p>
-        <button
-          onClick={sync}
-          disabled={isSyncing}
-          className={`btn ${isSyncing ? "btn-secondary" : "btn-primary"}`}
-        >
-          {isSyncing ? "Syncing..." : "Sync now"}
+        <button onClick={handleRefresh} className="btn btn-primary">
+          Refresh
         </button>
       </div>
     </div>

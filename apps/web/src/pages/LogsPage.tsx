@@ -1,34 +1,29 @@
 import { useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useQueryClient } from "@tanstack/react-query";
 import { Copy, Pencil, Trash2 } from "lucide-react";
-import { db } from "../lib/db";
 import { formatTime, formatDuration, formatDate } from "../lib/utils";
 import EditTimelogModal from "../components/EditTimelogModal";
-import { sync } from "../lib/sync";
+import { useTimelogs, useProjects, useAllTasks } from "../hooks/useApiData";
+import { api } from "../lib/api";
 
 export default function LogsPage() {
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(() => formatDate(new Date()));
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const startOfDay = new Date(selectedDate + "T00:00:00");
-  const endOfDay = new Date(selectedDate + "T23:59:59.999");
+  const from = selectedDate + "T00:00:00";
+  const to = selectedDate + "T23:59:59.999";
 
-  const timelogs = useLiveQuery(
-    () =>
-      db.timelogs
-        .where("startTime")
-        .between(startOfDay, endOfDay, true, true)
-        .sortBy("startTime"),
-    [selectedDate]
-  );
+  const { data: timelogs } = useTimelogs(from, to);
+  const { data: projects } = useProjects();
+  const { data: tasks } = useAllTasks();
 
-  const projects = useLiveQuery(() => db.projects.toArray(), []);
   const projectMap = new Map(projects?.map((p) => [p.id, p]) ?? []);
-  const tasks = useLiveQuery(() => db.tasks.toArray(), []);
   const taskMap = new Map(tasks?.map((t) => [t.id, t]) ?? []);
 
+  const logs = (timelogs ?? []).filter((l) => l.endTime != null);
+
   const handleCopy = async () => {
-    const logs = timelogs ?? [];
     const lines = logs.map((log) => {
       const proj = projectMap.get(log.projectId)?.name ?? "?";
       const task = taskMap.get(log.taskId)?.name ?? "?";
@@ -45,10 +40,19 @@ export default function LogsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Delete this timelog?")) {
-      await db.timelogs.delete(id);
-      if (navigator.onLine) sync().catch(() => {});
+    if (!confirm("Delete this timelog?")) return;
+    try {
+      await api.timelogs.delete(id);
+      queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "timelogs" });
+    } catch (e) {
+      console.warn("Failed to delete timelog:", e);
+      alert("Failed to delete timelog. Please try again.");
     }
+  };
+
+  const handleSaved = () => {
+    setEditingId(null);
+    queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "timelogs" });
   };
 
   return (
@@ -70,7 +74,7 @@ export default function LogsPage() {
       </div>
 
       <div className="logs-list">
-        {(timelogs ?? []).map((log) => {
+        {logs.map((log) => {
           const proj = projectMap.get(log.projectId);
           const task = taskMap.get(log.taskId);
           const mins = log.endTime
@@ -129,7 +133,7 @@ export default function LogsPage() {
         <EditTimelogModal
           id={editingId}
           onClose={() => setEditingId(null)}
-          onSaved={() => setEditingId(null)}
+          onSaved={handleSaved}
         />
       )}
     </div>

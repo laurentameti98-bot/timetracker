@@ -26,7 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <InstallPrompt />
       {!isOnline && (
         <div className="offline-banner">
-          Offline – data will sync when connected
+          Offline – data may not be available
         </div>
       )}
       <main className="layout-content">{children}</main>

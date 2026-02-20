@@ -6,24 +6,31 @@ import {
   projectUpdateSchema,
   taskCreateSchema,
 } from "@time-tracker/shared";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export async function projectRoutes(app: FastifyInstance) {
-  app.get("/", async () => {
-    return db.select().from(projects).orderBy(projects.createdAt);
+  app.get("/", async (req) => {
+    const userId = req.user!.userId;
+    return db
+      .select()
+      .from(projects)
+      .where(eq(projects.userId, userId))
+      .orderBy(projects.createdAt);
   });
 
   app.get<{ Params: { id: string } }>("/:id", async (req, reply) => {
+    const userId = req.user!.userId;
     const [project] = await db
       .select()
       .from(projects)
-      .where(eq(projects.id, req.params.id));
+      .where(and(eq(projects.id, req.params.id), eq(projects.userId, userId)));
     if (!project) return reply.status(404).send({ error: "Project not found" });
     return project;
   });
 
   app.post("/", async (req, reply) => {
+    const userId = req.user!.userId;
     const body = req.body as { name: string; subtitle?: string; color?: string; id?: string };
     const parsed = projectCreateSchema.safeParse(body);
     if (!parsed.success) {
@@ -33,6 +40,7 @@ export async function projectRoutes(app: FastifyInstance) {
     const now = new Date();
     await db.insert(projects).values({
       id,
+      userId,
       name: parsed.data.name,
       subtitle: parsed.data.subtitle ?? "",
       color: parsed.data.color ?? "#0d9488",
@@ -43,6 +51,7 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.put<{ Params: { id: string } }>("/:id", async (req, reply) => {
+    const userId = req.user!.userId;
     const parsed = projectUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
@@ -50,7 +59,7 @@ export async function projectRoutes(app: FastifyInstance) {
     const [existing] = await db
       .select()
       .from(projects)
-      .where(eq(projects.id, req.params.id));
+      .where(and(eq(projects.id, req.params.id), eq(projects.userId, userId)));
     if (!existing) return reply.status(404).send({ error: "Project not found" });
     await db
       .update(projects)
@@ -64,10 +73,11 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.delete<{ Params: { id: string } }>("/:id", async (req, reply) => {
+    const userId = req.user!.userId;
     const [existing] = await db
       .select()
       .from(projects)
-      .where(eq(projects.id, req.params.id));
+      .where(and(eq(projects.id, req.params.id), eq(projects.userId, userId)));
     if (!existing) return reply.status(404).send({ error: "Project not found" });
     // Cascade: delete tasks and timelogs before project
     await db.delete(timelogs).where(eq(timelogs.projectId, req.params.id));
@@ -77,10 +87,11 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>("/:id/tasks", async (req, reply) => {
+    const userId = req.user!.userId;
     const [project] = await db
       .select()
       .from(projects)
-      .where(eq(projects.id, req.params.id));
+      .where(and(eq(projects.id, req.params.id), eq(projects.userId, userId)));
     if (!project) return reply.status(404).send({ error: "Project not found" });
     return db
       .select()
@@ -90,10 +101,11 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Params: { id: string } }>("/:id/tasks", async (req, reply) => {
+    const userId = req.user!.userId;
     const [project] = await db
       .select()
       .from(projects)
-      .where(eq(projects.id, req.params.id));
+      .where(and(eq(projects.id, req.params.id), eq(projects.userId, userId)));
     if (!project) return reply.status(404).send({ error: "Project not found" });
     const body = req.body as { name: string; id?: string };
     const parsed = taskCreateSchema.safeParse({

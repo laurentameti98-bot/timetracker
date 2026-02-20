@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Download } from "lucide-react";
-import { db } from "../lib/db";
 import { formatDuration } from "../lib/utils";
+import { useTimelogs, useProjects, useAllTasks } from "../hooks/useApiData";
 import {
   BarChart,
   Bar,
@@ -24,26 +23,20 @@ export default function ReportsPage() {
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [groupBy, setGroupBy] = useState<"project" | "task">("project");
 
-  const start = new Date(from + "T00:00:00");
-  const end = new Date(to + "T23:59:59.999");
+  const fromParam = from + "T00:00:00";
+  const toParam = to + "T23:59:59.999";
 
-  const timelogs = useLiveQuery(
-    () =>
-      db.timelogs
-        .where("startTime")
-        .between(start, end, true, true)
-        .filter((l) => l.endTime != null)
-        .toArray(),
-    [from, to]
-  );
+  const { data: timelogs } = useTimelogs(fromParam, toParam);
+  const { data: projects } = useProjects();
+  const { data: tasks } = useAllTasks();
 
-  const projects = useLiveQuery(() => db.projects.toArray(), []);
-  const tasks = useLiveQuery(() => db.tasks.toArray(), []);
   const projectMap = new Map(projects?.map((p) => [p.id, p]) ?? []);
   const taskMap = new Map(tasks?.map((t) => [t.id, t]) ?? []);
 
+  const completedLogs = (timelogs ?? []).filter((l) => l.endTime != null);
+
   const aggregated =
-    timelogs?.reduce(
+    completedLogs.reduce(
       (acc, log) => {
         const mins =
           (new Date(log.endTime!).getTime() - new Date(log.startTime).getTime()) / 60000;
@@ -52,7 +45,7 @@ export default function ReportsPage() {
         return acc;
       },
       {} as Record<string, number>
-    ) ?? {};
+    );
 
   const chartData = Object.entries(aggregated).map(([id, mins]) => {
     const name =
@@ -77,7 +70,7 @@ export default function ReportsPage() {
   ];
 
   const handleExportCsv = () => {
-    const rows = (timelogs ?? []).map((log) => {
+    const rows = completedLogs.map((log) => {
       const proj = projectMap.get(log.projectId)?.name ?? "";
       const task = taskMap.get(log.taskId)?.name ?? "";
       const startStr = new Date(log.startTime).toISOString();

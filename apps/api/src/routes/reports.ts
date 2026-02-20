@@ -11,6 +11,7 @@ export async function reportRoutes(app: FastifyInstance) {
       groupBy?: "project" | "task" | "day";
     };
   }>("/summary", async (req) => {
+    const userId = req.user!.userId;
     const { from, to, groupBy = "project" } = req.query;
     const fromDate = from ? new Date(from) : new Date(new Date().setHours(0, 0, 0, 0));
     const toDate = to ? new Date(to) : new Date();
@@ -30,6 +31,7 @@ export async function reportRoutes(app: FastifyInstance) {
         .innerJoin(projects, eq(timelogs.projectId, projects.id))
         .where(
           and(
+            eq(projects.userId, userId),
             gte(timelogs.startTime, fromDate),
             lte(timelogs.startTime, toDate),
             sql`${timelogs.endTime} IS NOT NULL`
@@ -56,6 +58,7 @@ export async function reportRoutes(app: FastifyInstance) {
         .innerJoin(projects, eq(timelogs.projectId, projects.id))
         .where(
           and(
+            eq(projects.userId, userId),
             gte(timelogs.startTime, fromDate),
             lte(timelogs.startTime, toDate),
             sql`${timelogs.endTime} IS NOT NULL`
@@ -76,8 +79,10 @@ export async function reportRoutes(app: FastifyInstance) {
           )`,
         })
         .from(timelogs)
+        .innerJoin(projects, eq(timelogs.projectId, projects.id))
         .where(
           and(
+            eq(projects.userId, userId),
             gte(timelogs.startTime, fromDate),
             lte(timelogs.startTime, toDate),
             sql`${timelogs.endTime} IS NOT NULL`

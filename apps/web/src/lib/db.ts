@@ -1,31 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
 
-export interface Project {
-  id: string;
-  name: string;
-  subtitle?: string;
-  color: string;
-  createdAt: Date;
-}
-
-export interface Task {
-  id: string;
-  projectId: string;
-  name: string;
-  createdAt: Date;
-}
-
-export interface Timelog {
-  id: string;
-  projectId: string;
-  taskId: string;
-  startTime: Date;
-  endTime?: Date;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface ActiveTimer {
   id: string;
   projectId: string;
@@ -34,9 +8,6 @@ export interface ActiveTimer {
 }
 
 export class TimeTrackerDB extends Dexie {
-  projects!: EntityTable<Project, "id">;
-  tasks!: EntityTable<Task, "id">;
-  timelogs!: EntityTable<Timelog, "id">;
   activeTimer!: EntityTable<ActiveTimer, "id">;
 
   constructor() {
@@ -45,6 +16,12 @@ export class TimeTrackerDB extends Dexie {
       projects: "id, createdAt",
       tasks: "id, projectId, createdAt",
       timelogs: "id, projectId, taskId, startTime, endTime, createdAt",
+      activeTimer: "id",
+    });
+    this.version(2).stores({
+      projects: null,
+      tasks: null,
+      timelogs: null,
       activeTimer: "id",
     });
   }

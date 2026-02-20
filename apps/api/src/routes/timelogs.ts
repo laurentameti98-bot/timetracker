@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
-import { timelogs } from "../db/schema.js";
+import { timelogs, projects } from "../db/schema.js";
 import { timelogCreateSchema, timelogUpdateSchema } from "@time-tracker/shared";
 import { eq, gte, lte, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -9,34 +9,43 @@ export async function timelogRoutes(app: FastifyInstance) {
   app.get<{
     Querystring: { from?: string; to?: string };
   }>("/", async (req) => {
+    const userId = req.user!.userId;
     const { from, to } = req.query;
-    let query = db.select().from(timelogs).orderBy(timelogs.startTime);
-    if (from) {
-      const fromDate = new Date(from);
-      query = query.where(gte(timelogs.startTime, fromDate)) as typeof query;
-    }
-    if (to) {
-      const toDate = new Date(to);
-      query = query.where(lte(timelogs.startTime, toDate)) as typeof query;
-    }
-    return query;
+    const conditions = [eq(projects.userId, userId)];
+    if (from) conditions.push(gte(timelogs.startTime, new Date(from)));
+    if (to) conditions.push(lte(timelogs.startTime, new Date(to)));
+    const result = await db
+      .select({ timelog: timelogs })
+      .from(timelogs)
+      .innerJoin(projects, eq(timelogs.projectId, projects.id))
+      .where(and(...conditions))
+      .orderBy(timelogs.startTime);
+    return result.map((r) => r.timelog);
   });
 
   app.get<{ Params: { id: string } }>("/:id", async (req, reply) => {
-    const [timelog] = await db
-      .select()
+    const userId = req.user!.userId;
+    const [row] = await db
+      .select({ timelog: timelogs })
       .from(timelogs)
-      .where(eq(timelogs.id, req.params.id));
-    if (!timelog) return reply.status(404).send({ error: "Timelog not found" });
-    return timelog;
+      .innerJoin(projects, eq(timelogs.projectId, projects.id))
+      .where(and(eq(timelogs.id, req.params.id), eq(projects.userId, userId)));
+    if (!row) return reply.status(404).send({ error: "Timelog not found" });
+    return row.timelog;
   });
 
   app.post("/", async (req, reply) => {
+    const userId = req.user!.userId;
     const body = req.body as { projectId: string; taskId: string; startTime: string; endTime?: string; notes?: string; id?: string };
     const parsed = timelogCreateSchema.safeParse(body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(and(eq(projects.id, parsed.data.projectId), eq(projects.userId, userId)));
+    if (!project) return reply.status(404).send({ error: "Project not found" });
     const id = body.id && /^[0-9a-f-]{36}$/i.test(body.id) ? body.id : randomUUID();
     const now = new Date();
     await db.insert(timelogs).values({
@@ -57,16 +66,17 @@ export async function timelogRoutes(app: FastifyInstance) {
   });
 
   app.put<{ Params: { id: string } }>("/:id", async (req, reply) => {
+    const userId = req.user!.userId;
     const parsed = timelogUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.flatten() });
     }
-    const [existing] = await db
-      .select()
+    const [row] = await db
+      .select({ timelog: timelogs })
       .from(timelogs)
-      .where(eq(timelogs.id, req.params.id));
-    if (!existing)
-      return reply.status(404).send({ error: "Timelog not found" });
+      .innerJoin(projects, eq(timelogs.projectId, projects.id))
+      .where(and(eq(timelogs.id, req.params.id), eq(projects.userId, userId)));
+    if (!row) return reply.status(404).send({ error: "Timelog not found" });
     const updateData = { ...parsed.data, updatedAt: new Date() };
     await db
       .update(timelogs)
@@ -80,12 +90,14 @@ export async function timelogRoutes(app: FastifyInstance) {
   });
 
   app.delete<{ Params: { id: string } }>("/:id", async (req, reply) => {
-    const result = await db
-      .delete(timelogs)
-      .where(eq(timelogs.id, req.params.id));
-    if (result.changes === 0) {
-      return reply.status(404).send({ error: "Timelog not found" });
-    }
+    const userId = req.user!.userId;
+    const [row] = await db
+      .select()
+      .from(timelogs)
+      .innerJoin(projects, eq(timelogs.projectId, projects.id))
+      .where(and(eq(timelogs.id, req.params.id), eq(projects.userId, userId)));
+    if (!row) return reply.status(404).send({ error: "Timelog not found" });
+    await db.delete(timelogs).where(eq(timelogs.id, req.params.id));
     return reply.status(204).send();
   });
 }
