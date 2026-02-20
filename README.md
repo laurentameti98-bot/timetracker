@@ -73,3 +73,5 @@ REST API at `/api/v1`:
 - Add Disk, mount at `/data`, set `DATABASE_URL=/data/sqlite.db`
 
 **Alternative:** Set API URL manually in app Settings after deployment.
+
+**Auth:** Set `VITE_GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_ID` (web + API) for Google Sign-In.
