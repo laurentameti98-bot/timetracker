@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Plus, Trash2 } from "lucide-react";
 import { db } from "../lib/db";
 import { randomUUID } from "../lib/utils";
+import { sync } from "../lib/sync";
 
 const COLORS = [
   "#0d9488",
@@ -63,6 +64,7 @@ export default function ProjectsPage() {
       await db.tasks.where("projectId").equals(id).delete();
       await db.timelogs.where("projectId").equals(id).delete();
       await db.projects.delete(id);
+      if (navigator.onLine) sync().catch(() => {});
     }
   };
 
@@ -70,6 +72,7 @@ export default function ProjectsPage() {
     if (confirm("Delete this task?")) {
       await db.timelogs.where("taskId").equals(id).delete();
       await db.tasks.delete(id);
+      if (navigator.onLine) sync().catch(() => {});
     }
   };
 

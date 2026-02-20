@@ -174,3 +174,9 @@ export async function syncToServer() {
   localStorage.setItem("lastSync", String(now));
   return now;
 }
+
+/** Full sync: push local changes first, then pull server state. Call after mutations when online. */
+export async function sync() {
+  await syncToServer();
+  await syncFromServer();
+}

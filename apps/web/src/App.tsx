@@ -6,12 +6,7 @@ import LogsPage from "./pages/LogsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProjectsPage from "./pages/ProjectsPage";
-import { syncFromServer, syncToServer } from "./lib/sync";
-
-async function sync() {
-  await syncToServer();   // 1. Push local changes to server first
-  await syncFromServer(); // 2. Then pull server state into local
-}
+import { sync } from "./lib/sync";
 
 export default function App() {
   useEffect(() => {

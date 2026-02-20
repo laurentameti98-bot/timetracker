@@ -4,6 +4,7 @@ import { Copy, Pencil, Trash2 } from "lucide-react";
 import { db } from "../lib/db";
 import { formatTime, formatDuration, formatDate } from "../lib/utils";
 import EditTimelogModal from "../components/EditTimelogModal";
+import { sync } from "../lib/sync";
 
 export default function LogsPage() {
   const [selectedDate, setSelectedDate] = useState(() => formatDate(new Date()));
@@ -46,6 +47,7 @@ export default function LogsPage() {
   const handleDelete = async (id: string) => {
     if (confirm("Delete this timelog?")) {
       await db.timelogs.delete(id);
+      if (navigator.onLine) sync().catch(() => {});
     }
   };
 
