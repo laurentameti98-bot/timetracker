@@ -1050,51 +1050,8 @@ button:disabled {
 .login-google-container {
   width: 100%;
   max-width: 280px;
-  position: relative;
-}
-
-.login-google-btn {
-  width: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: 0.75rem 1.5rem;
-  background: transparent;
-  border: 2px solid var(--accent);
-  border-radius: 999px;
-  color: var(--accent);
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
-}
-
-.login-google-btn:hover {
-  background: rgba(168, 85, 247, 0.08);
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
-  transform: scale(1.01);
-}
-
-[data-theme="light"] .login-google-btn:hover {
-  background: rgba(109, 40, 217, 0.06);
-  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.15);
-}
-
-.login-google-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  color: var(--accent);
-}
-
-.login-google-hidden {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
 }
 
 .login-error {
