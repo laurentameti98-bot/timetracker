@@ -10,12 +10,14 @@ async function fetchApi<T>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
+  const hasBody = options?.body != null && options.body !== "";
+  const headers: Record<string, string> = {
+    ...(hasBody ? { "Content-Type": "application/json" } : {}),
+    ...(options?.headers as Record<string, string>),
+  };
   const res = await fetch(`${getApiBase()}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
+    headers,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
