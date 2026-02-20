@@ -9,8 +9,8 @@ import ProjectsPage from "./pages/ProjectsPage";
 import { syncFromServer, syncToServer } from "./lib/sync";
 
 async function sync() {
-  await syncFromServer();
-  await syncToServer();
+  await syncToServer();   // 1. Push local changes to server first
+  await syncFromServer(); // 2. Then pull server state into local
 }
 
 export default function App() {
